@@ -1,0 +1,159 @@
+{
+  "title": "CyberBorg",
+  "pages":{
+    "login":{
+      "title": "Inloggen",
+      "newUser":"NOG GEEN ACCOUNT?",
+      "formUser":"Gebruikersnaam",
+      "userError":"Voer gebruikersnaam in",
+      "formPassword":"Wachtwoord",
+      "passwordError":"Voer wachtwoord in",
+      "formSubmit":"LOGIN"
+    },
+    "signup":{
+      "backButton": "TERUG NAAR HOMEPAGE",
+      "title": "Probeer 30 dagen gratis",
+      "subTitle": "Doorlopend twee keer per week veiligheidsscans, rapporten en waarschuwingen voor uw bedrijf twee keer per week. Zeg wanneer u wilt.",
+      "offerTitle": "Start proefperiode",
+      "offer": "gratis",
+      "offerPeriod": "VOOR 30 DAGEN",
+      "formDivTitle": "30 dagen proefperiode",
+      "accountExist": "IK HEB REEDS EEN ACCOUNT",
+      "formTitle": "Registreer hieronder de bedrijfsgegevens van het domein dat u wilt beschermen.",
+      "formCompany": "BEDRIJFSNAAM",
+      "companyError": "Voer de bedrijfsnaam in.",
+      "formName": "NAAM",
+      "nameError": "Voer de voor- en achternaam in.",
+      "formMail": "EMAIL",
+      "mailError": "Voer een e-mailadres in.",
+      "mailExists":"Dit e-mail adres is al in gebruik.",
+      "formPassword": "WACHTWOORD",
+      "passwordError": "Uw wachtwoord moet uit minimaal 8 tekens bestaan.",
+      "retypePassword": "HERHAAL WACHTWOORD",
+      "retypePasskey":"Typ het wachtwoord opnieuw",
+      "retypePasswordError": "Wachtwoorden komen niet overeen.",
+      "formSubmit": "REGISTREREN",
+      "formPolicy": "Wanneer u op registreren klikt, gaat u akkoord met onze",
+      "term":"voorwaarden",
+      "and":"en"
+    },
+    "dashboard": {
+      "lastScan":"Laatste scan",
+      "alertsDistribution" : "Alerts verdeling",
+      "lastAlerts" : "Laatste alerts",
+      "openAlerts" : "Open alerts",
+      "solvedAlerts" : "Opgeloste alerts",
+      "dayAgo":"DAGEN GELEDEN",
+      "moreAlerts":"meer alerts ",
+      "month":"maand",
+      "quarter":"kwartaal",
+      "year":"jaar",
+      "solved":"opgelost",
+      "new":"nieuw",
+      "open":"openstaand",
+      "makeReport":"maak rapport"
+    },
+    "alerts": {
+      "open":"openstaand",
+      "solved":"OPGELOST",
+      "foundIt":"gevonden"
+    },
+    "forgotPassword":{
+      "title": "Wachtwoord vergeten?",
+      "formSubmit": "WACHTWOORD HERSTELLEN",
+      "back": "TERUG NAAR INLOGGEN"
+    },
+    "sidebar": {
+      "tab": "JOUW DOMEINEN",
+      "logout": "Uitloggen",
+      "showDomain":"TOON MEER DOMEINEN",
+      "report":"Rapportages"
+    },
+    "domainsOverview": {
+      "title": "U heeft nog geen actieve domeinen.",
+      "title1":"Voeg een domein toe om te starten.",
+      "addButton": "DOMEIN TOEVOEGEN",
+      "added":"toegevoegd",
+      "addDomain":"DOMEIN TOEVOEGEN",
+      "see":"bekijken"
+    },
+    "reportsOverview": {
+      "numberOfScans":"Aantal scans",
+      "alertsfound":"Alerts gevonden",
+      "alertsSolved":"Alerts opgelost",
+      "solved":"opgelost",
+      "Date":"Datum",
+      "category":"categorie",
+      "outstandingAlerts":"Openstaande alerts",
+      "solidAlerts":"OPGELOSTE ALERTS",
+      "showMore":"TOON MEER "
+    },
+    "domainAdd": {
+      "sidebar": {
+        "title": "2e domeinkorting",
+        "timeInterval": "PER JAAR"
+      },
+      "title": "Domein toevoegen",
+      "formTitle": "Vul het domein in dat u wilt toevoegen.",
+      "formSubmit": "VOLGENDE STAP"
+    },
+    "view":{
+      "expired":{
+        "text": "Helaas is de proefperiode verlopen: Je domein wordt niet meer gescand. Wilt u beveiligd blijven? Upgrade dan nu naar pro.",
+        "button": "NU UPGRADEN"
+      },
+      "trial": {
+        "proef": "Proefperiode",
+        "period": "Nog 29 dagen",
+        "button": "upgrade naar pro"
+      }
+    },
+    "account":{
+      "settings": {
+        "title": "Instellingen",
+        "linkProfile": "Profiel",
+        "linkInvoice": "Facturen",
+        "linkSetting": "Instellingen",
+        "appSettings":{
+          "title": "APP INSTELLINGEN",
+          "language": "TAAL",
+          "zone": "TIJDZONE"
+        },
+        "accountSecurity":{
+          "title": "ACCOUNT BEVEILIGING",
+          "type": "2-FACTOR VEILIGHEID"
+        },
+        "notifications": {
+          "title": "NOTIFICATIES",
+          "alert": "EMAIL ALERTS"
+        }
+      },
+      "profile":{
+        "companyDetails":{
+          "title": "BEDRIJFSGEGEVENS",
+          "company": "BEDRIJFSNAAM",
+          "place": "PLAATS",
+          "land": "LAND",
+          "kvk": "KVK"
+        },
+        "accountInformation":{
+          "title": "ACCOUNTGEGEVENS",
+          "name": "naam",
+          "mail": "EMAIL",
+          "passwod": "WACHTWOORD",
+          "retypePassword": "HERHAAL WACHTWOORD",
+          "picture": "PROFIELBEELD"
+        }
+      },
+      "invoices": {
+        "date": "DATUM",
+        "invoice": "FACTURENNUMMER",
+        "status": "STATUS",
+        "amount": "BEDRAG",
+        "payButton":"nu betalen",
+        "statusContain":"Openstaand",
+        "statusContain1":"Betaald"
+      }
+    }
+  }
+}

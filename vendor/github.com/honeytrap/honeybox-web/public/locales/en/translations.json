@@ -1,0 +1,174 @@
+{
+  "title": "CyberBorg",
+  "pages":{
+    "login":{
+      "title": "login",
+      "newUser":"NO ACCOUNT YET?",
+      "formUser":"Username",
+      "userError":"Please enter your username",
+      "formPassword":"Password",
+      "passwordError":"Please enter your password",
+      "formSubmit":"LOGIN"
+    },
+    "signup":{
+      "backButton":"BACK TO LOGIN PAGE",
+      "title": "Try for free for 30 days",
+      "subTitle":"Security scans, reports and alerts for your company twice a week. Say when you want.",
+      "offerTitle":"Start trial period",
+      "offer":"free",
+      "offerPeriod":"FOR 30 DAYS",
+      "formDivTitle":"30 days trial period",
+      "accountExist":"I ALREADY HAVE AN ACCOUNT",
+      "formTitle":"Welcome to CyberBorg!",
+      "formSubTitle":"With whom do we have the pleasure?",
+      "formCompany":"COMPANY NAME",
+      "companyError":"Please enter Company Name.",
+      "formName":"NAME",
+      "nameError":"Please enter First and last name.",
+      "formMail":"E-MAIL",
+      "mailError":"Please enter E-mail id.",
+      "mailExists":"This e-mail address is already in use.",
+      "formPassword":"PASSWORD",
+      "passwordError":"Your password must contain at least 8 characters.",
+      "retypePassword":"REPEAT PASSWORD",
+      "retypePasskey":"Re-type the password",
+      "retypePasswordError":"Passwords do not match.",
+      "formSubmit":"REGISTER",
+      "formPolicy":"When you click on register you agree to our",
+      "term":"Terms & Conditions",
+      "policy":"Privacy Policy",
+      "and":"and"
+    },
+    "dashboard": {
+      "lastScan": "Last scan",
+      "alertsDistribution" : "Alerts distribution",
+      "lastAlerts" : "Last alerts",
+      "openAlerts" : "Open alerts",
+      "solvedAlerts" : " Solved alerts",
+      "dayAgo": "DAYS AGO",
+      "moreAlerts":"more Alerts ",
+      "month":"month",
+      "quarter":"quarter",
+      "year":"year",
+      "solved":"solved",
+      "new":"new",
+      "open":"open",
+      "makeReport":"make report"
+    },
+    "alerts": {
+      "open":"Open",
+      "solved":"Solved",
+      "foundIt":"found it"
+    },
+    "forgotPassword":{
+      "title":"Forgot your password?",
+      "formSubmit":"RESET PASSWORD",
+      "back":"BACK TO LOGIN"
+    },
+    "resetPassword":{
+      "buttonText":"Submit",
+      "password":"New password",
+      "error":"Enter a new password",
+      "passwordConfirm":"repeat new password"
+    },
+    "sidebar":{
+      "tab":"YOUR DOMAINS",
+      "logout":"Log Out",
+      "showDomain":"SHOW MORE DOMAINS",
+      "report":"Reports"
+    },
+    "domainsOverview":{
+      "title":"You do not have active domains yet.",
+      "title1":" Add a domain to start.",
+      "addButton":"ADD DOMAIN",
+      "added":"Added",
+      "addDomain":"add Domain",
+      "see":"See"
+    },
+    "reportsOverview": {
+      "numberOfScans":"number Of Scans",
+      "alertsfound":"Alerts found",
+      "alertsSolved":"Alerts Solved",
+      "solved":"Solved",
+      "Date":"Date",
+      "category":"Category",
+      "outstandingAlerts":"Found Alerts",
+      "solvedAlerts":"Solved Alerts",
+      "showMore":"Show More "
+    },
+    "domainAdd":{
+      "sidebar":{
+        "title":"2nd domain discount",
+        "timeInterval":"PER YEAR"
+      },
+      "nextStep":{
+        "previousButton":"PREVIOUS STEP",
+        "addButton":"ADD"
+      },
+      "headerTitle":"Domain Add",
+      "title":"Add Domain",
+      "formTitle":"Enter the domain you want to add.",
+      "formSubmit":"NEXT STEP"
+    },
+    "view":{
+      "expired":{
+        "text":"Unfortunately, the trial period has expired. Your domain is no longer being scanned. Do you want to stay protected? Then upgrade to pro now.",
+        "button":"UPGRADE NOW"
+      },
+      "trial":{
+        "trial":"Trial period",
+        "period":"29 days left",
+        "button":"upgrade to pro"
+      }
+    },
+    "account":{
+      "settings":{
+        "headerTitle":"Overview",
+        "title":"Settings",
+        "linkProfile":"Profile",
+        "linkInvoice":"Invoices",
+        "linkSetting":"Settings",
+        "appSettings":{
+          "title":"APP SETTINGS",
+          "language":"LANGUAGE",
+          "zone":"TIME ZONE"
+        },
+        "accountSecurity":{
+          "title":"ACCOUNT SECURITY",
+          "type":"2-FACTOR SECURITY"
+        },
+        "notifications":{
+          "title":"NOTIFICATIONS",
+          "alert":"EMAIL ALERTS"
+        }
+      },
+      "profile":{
+        "companyDetails":{
+          "title":"COMPANY DETAILS",
+          "company":"COMAPNY NAME",
+          "place":"PLACE",
+          "land":"LAND",
+          "kvk":"KVK"
+        },
+        "accountInformation":{
+          "title":"ACCOUNT INFORMATION",
+          "name":"NAME",
+          "mail":"EMAIL",
+          "oldPassword":"Current password",
+          "passwod": "New password",
+          "retypePassword": "Repeat New password",
+          "picture":"PROFILE PICTURE"
+        }
+      },
+      "invoices":{
+        "date":"DATE",
+        "invoice":"INVOICE NUMBER",
+        "status":"STATUS",
+        "amount":"AMOUNT",
+        "payButton":"pay now",
+        "statusContain":"Open",
+        "statusContain1":"Paid"
+      }
+    }
+  }
+}

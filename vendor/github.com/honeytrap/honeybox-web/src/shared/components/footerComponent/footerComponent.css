@@ -1,0 +1,26 @@
+.header {
+    height: 40px;
+    padding: 0 15px;
+    background: #435A74;
+    border-top: 1px solid rgba(0, 0, 0, .3);
+    border-bottom: 1px solid rgba(0, 0, 0, .3);
+    font-size: 1em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.content {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow-y: auto;
+}
+
+.title {
+    line-height: 40px;
+    font-size: 1.2em;
+    margin: 0;
+}

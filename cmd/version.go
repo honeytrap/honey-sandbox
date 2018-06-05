@@ -33,7 +33,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/honeytrap/honey-container/server"
+	"github.com/honeytrap/honeybox/server"
 
 	cli "gopkg.in/urfave/cli.v1"
 )

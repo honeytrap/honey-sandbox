@@ -1,0 +1,40 @@
+.layout {
+    height: 100%;
+    background: #334353;
+    color: white;
+}
+
+.header {
+    background: #435A74;
+    height: 40px;
+    border-bottom: 1px solid #26323E;
+}
+
+.subLayout {
+    height: calc(100% - 40px);
+    display: flex;
+}
+
+.layoutLeft {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.main {
+    height: 408px;
+}
+
+.aside {
+    width: 300px;
+    background: #3D5168;
+    padding: 15px;
+    flex-shrink: 0;
+    border-left: 1px solid #26323E;
+}
+
+.footer {
+    height: 300px;
+}
+

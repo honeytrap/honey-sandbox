@@ -33,9 +33,11 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/honeytrap/honeybox/server/gvisor"
 )
 
 const (
@@ -57,7 +59,10 @@ type connection struct {
 
 	web *web
 
-	send chan json.Marshaler
+	send chan *message
+
+	ctrl   *gvisor.Control
+	sndbox *gvisor.Sandbox
 }
 
 func (c *connection) readPump() {
@@ -69,16 +74,42 @@ func (c *connection) readPump() {
 	})
 
 	for {
-		_, message, err := c.ws.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				log.Errorf("Socket closed unexpectedly: %v", err)
-			}
+		msg := struct {
+			Type    string          `json:"type"`
+			Payload json.RawMessage `json:"payload"`
+		}{}
 
-			break
+		if err := c.ws.ReadJSON(&msg); err == nil {
+		} else if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
+			log.Errorf("Socket closed unexpectedly: %v", err)
+			return
+		} else {
+			log.Errorf("Socket closed: %v", err)
+			return
 		}
 
-		_ = message
+		log.Debugf("Receive message: type=%s, payload=%#+v\n", msg.Type, msg.Payload)
+
+		if msg.Type == "stdin" {
+			data := struct {
+				Data string `json:"data"`
+			}{}
+
+			err := json.Unmarshal(msg.Payload, &data)
+			if err != nil {
+				log.Errorf("Unmarshal error: %v", err)
+				continue
+			}
+
+			fmt.Printf("Data: %#+v\n", data)
+
+			if data.Data == "\r" {
+				c.ctrl.StdIn.Write([]byte("\n"))
+			} else {
+				c.ctrl.StdIn.Write([]byte(data.Data))
+			}
+		}
+
 	}
 }
 
@@ -99,14 +130,16 @@ func (c *connection) writePump() {
 
 	for {
 		select {
-		case message, ok := <-c.send:
+		case msg, ok := <-c.send:
 			if !ok {
 				c.write(websocket.CloseMessage, []byte{})
 				return
 			}
 
+			log.Debugf("Send message: type=%s, payload=%+#v\n", msg.Type, msg.Payload)
+
 			buff := new(bytes.Buffer)
-			if err := json.NewEncoder(buff).Encode(message); err != nil {
+			if err := json.NewEncoder(buff).Encode(msg); err != nil {
 				log.Error(err.Error())
 				return
 			} else if err := c.write(websocket.TextMessage, buff.Bytes()); err != nil {

@@ -33,16 +33,22 @@ package web
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
-	"github.com/honeytrap/honeytrap/event"
+	logging "github.com/op/go-logging"
 
+	"github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/websocket"
+	assets "github.com/honeytrap/honeybox-web"
+	"github.com/honeytrap/honeybox/server/gvisor"
 )
+
+var log = logging.MustGetLogger("honeyboxr/web")
 
 type web struct {
 	ListenAddress string `toml:"listen"`
 
-	messageCh chan json.Marshaler
+	messageCh chan *message
 
 	// Registered connections.
 	connections map[*connection]bool
@@ -56,13 +62,13 @@ type web struct {
 
 func New(options ...func(*web) error) (*web, error) {
 	hc := web{
-		ListenAddress: "127.0.0.1:8089",
+		ListenAddress: "0.0.0.0:8091",
 
 		register:    make(chan *connection),
 		unregister:  make(chan *connection),
 		connections: make(map[*connection]bool),
 
-		messageCh: make(chan json.Marshaler),
+		messageCh: make(chan *message),
 	}
 
 	for _, optionFn := range options {
@@ -90,19 +96,14 @@ func (web *web) Start() {
 		Handler: handler,
 	}
 
-	/*
-		sh := http.FileServer(&assetfs.AssetFS{
-			Asset:     assets.Asset,
-			AssetDir:  assets.AssetDir,
-			AssetInfo: assets.AssetInfo,
-			Prefix:    assets.Prefix,
-		})
-	*/
-
 	handler.HandleFunc("/ws", web.ServeWS)
-	/*
-		handler.Handle("/", sh)
-	*/
+
+	handler.Handle("/", http.FileServer(&assetfs.AssetFS{
+		Asset:     assets.Asset,
+		AssetDir:  assets.AssetDir,
+		AssetInfo: assets.AssetInfo,
+		Prefix:    assets.Prefix,
+	}))
 
 	go web.run()
 
@@ -132,27 +133,41 @@ func (web *web) run() {
 	}
 }
 
-type Message struct {
-	Type string      `json:"type"`
-	Data interface{} `json:"data"`
+type message struct {
+	Type    string      `json:"type"`
+	Payload interface{} `json:"payload"`
 }
 
-func (msg Message) MarshalJSON() ([]byte, error) {
+func (msg *message) MarshalJSON() ([]byte, error) {
 	m := map[string]interface{}{}
 	m["type"] = msg.Type
-	m["data"] = msg.Data
+	m["payload"] = msg.Payload
+
 	return json.Marshal(m)
 }
 
-func Data(t string, data interface{}) json.Marshaler {
-	return &Message{
-		Type: t,
-		Data: data,
+func Data(data interface{}) interface{} {
+	m := map[string]interface{}{}
+	m["data"] = data
+	return m
+}
+
+func Error(description string) *message {
+	return &message{
+		Type: "error",
+		Payload: struct {
+			Description string
+		}{
+			Description: description,
+		},
 	}
 }
 
-func (web *web) Send(evt event.Event) {
-	web.eventCh <- evt
+func Message(t string, payload interface{}) *message {
+	return &message{
+		Type:    t,
+		Payload: payload,
+	}
 }
 
 func (web *web) ServeWS(w http.ResponseWriter, r *http.Request) {
@@ -162,13 +177,42 @@ func (web *web) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Info("Connection upgraded.")
+
 	c := &connection{
-		ws:   ws,
-		web:  web,
-		send: make(chan json.Marshaler, 100),
+		ws:  ws,
+		web: web,
+
+		send: make(chan *message, 100),
 	}
 
-	log.Info("Connection upgraded.")
+	web.register <- c
+
+	// start new container
+	mngr, err := gvisor.New(
+		gvisor.WithRoot("/chroot"),
+	)
+	if err != nil {
+		c.send <- Error(err.Error())
+		return
+	}
+
+	sndbox, err := mngr.Create()
+	if err != nil {
+		c.send <- Error(err.Error())
+		return
+	}
+
+	sndbox.Start()
+
+	defer sndbox.Stop()
+
+	c.send <- Message("info", struct {
+		Name string `json:"name"`
+	}{
+		Name: sndbox.Name,
+	})
+
 	defer func() {
 		c.web.unregister <- c
 		c.ws.Close()
@@ -176,8 +220,71 @@ func (web *web) ServeWS(w http.ResponseWriter, r *http.Request) {
 		log.Info("Connection closed")
 	}()
 
-	web.register <- c
+	// watch logs
+	go func() {
+		for event := range sndbox.Events() {
+			c.send <- Message("event", event)
+			c.send <- Error("BLA")
+		}
+	}()
+
+	// start new process
+	ctrl, err := sndbox.Run()
+	if err != nil {
+		c.send <- Error(err.Error())
+		return
+	}
+
+	c.ctrl = ctrl
+
+	go func() {
+		buff := make([]byte, 1024)
+		for {
+			n, err := c.ctrl.StdOut.Read(buff)
+			if err != nil {
+				log.Error(err.Error())
+				break
+			}
+
+			ws.SetWriteDeadline(time.Now().Add(writeWait))
+
+			c.send <- Message("stdout", Data(buff[:n]))
+		}
+	}()
+
+	go func() {
+		buff := make([]byte, 1024)
+		for {
+			n, err := c.ctrl.StdErr.Read(buff)
+			if err != nil {
+				log.Error(err.Error())
+				break
+			}
+
+			ws.SetWriteDeadline(time.Now().Add(writeWait))
+
+			c.send <- Message("stderr", Data(buff[:n]))
+		}
+	}()
 
 	go c.writePump()
 	c.readPump()
+}
+
+func (web *web) ServeConsoleWS(w http.ResponseWriter, r *http.Request) {
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Errorf("Could not upgrade connection: %s", err.Error())
+		return
+	}
+
+	log.Info("Connection upgraded.")
+
+	defer func() {
+		ws.Close()
+
+		log.Info("Connection closed")
+	}()
+
+	ws.SetReadLimit(maxMessageSize)
 }

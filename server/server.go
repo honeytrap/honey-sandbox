@@ -41,11 +41,10 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/op/go-logging"
 
-	gvisor "github.com/honeytrap/honey-container/server/gvisor"
-	"github.com/honeytrap/honey-container/web"
+	"github.com/honeytrap/honeybox/web"
 )
 
-var log = logging.MustGetLogger("honey-container/server")
+var log = logging.MustGetLogger("honeybox/server")
 
 // Honeytrap defines a struct which coordinates the internal logic for the honeytrap
 // container infrastructure.
@@ -81,17 +80,9 @@ func IsTerminal(f *os.File) bool {
 // Run will start honeytrap
 func (hc *Server) Run(ctx context.Context) {
 	if IsTerminal(os.Stdout) {
-		fmt.Println(color.YellowString(`
- _   _                       _____                %c
-| | | | ___  _ __   ___ _   |_   _| __ __ _ _ __
-| |_| |/ _ \| '_ \ / _ \ | | || || '__/ _' | '_ \
-|  _  | (_) | | | |  __/ |_| || || | | (_| | |_) |
-|_| |_|\___/|_| |_|\___|\__, ||_||_|  \__,_| .__/
-                        |___/              |_|
-`, 127855))
+		fmt.Println(color.YellowString(`Honeybox%c starting...`, 127855))
 	}
 
-	fmt.Println(color.YellowString("Honey container starting..."))
 	fmt.Println(color.YellowString("Version: %s (%s)", Version, ShortCommitID))
 
 	hc.wg.Add(1)
@@ -104,22 +95,7 @@ func (hc *Server) Run(ctx context.Context) {
 
 	w.Start()
 
-	mngr, err := gvisor.New()
-	if err != nil {
-		panic(err)
-	}
-
-	sndbox, err := mngr.New()
-	if err != nil {
-		panic(err)
-	}
-
-	_ = sndbox
-
 	<-ctx.Done()
-
-	sndbox.Stop()
-
 }
 
 // Stop will stop Server

@@ -39,7 +39,7 @@ import (
 	"syscall"
 
 	"github.com/fatih/color"
-	"github.com/honeytrap/honey-container/server"
+	"github.com/honeytrap/honeybox/server"
 	cli "gopkg.in/urfave/cli.v1"
 
 	logging "github.com/op/go-logging"
@@ -64,7 +64,7 @@ VERSION:
 ` + server.Version +
 	`{{ "\n"}}`
 
-var log = logging.MustGetLogger("honey-container/cmd")
+var log = logging.MustGetLogger("honeybox/cmd")
 
 var globalFlags = []cli.Flag{
 	cli.StringFlag{
@@ -120,11 +120,11 @@ Commit-ID: %s
 	}
 
 	app := cli.NewApp()
-	app.Name = "honeytrap"
+	app.Name = "honeybox"
 	app.Author = ""
-	app.Usage = "honeytrap"
+	app.Usage = "honeybox"
 	app.Flags = globalFlags
-	app.Description = `honeytrap: The honeypot server.`
+	app.Description = `honeybox: sandbox.`
 	app.CustomAppHelpTemplate = helpTemplate
 	app.Commands = []cli.Command{}
 	app.Before = func(c *cli.Context) error {

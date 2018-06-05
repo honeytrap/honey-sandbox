@@ -35,7 +35,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/honeytrap/honey-container/cmd"
+	"github.com/honeytrap/honeybox/cmd"
 )
 
 func init() {

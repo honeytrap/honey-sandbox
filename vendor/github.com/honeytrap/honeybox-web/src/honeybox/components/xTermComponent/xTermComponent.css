@@ -1,0 +1,3 @@
+.container :global(.xterm.terminal) {
+    padding: 0 3px;
+}

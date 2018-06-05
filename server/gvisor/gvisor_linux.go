@@ -38,14 +38,20 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 	gvisorlog "gvisor.googlesource.com/gvisor/pkg/log"
+	"gvisor.googlesource.com/gvisor/pkg/sentry/control"
+	"gvisor.googlesource.com/gvisor/pkg/sentry/kernel/auth"
+	"gvisor.googlesource.com/gvisor/pkg/urpc"
 	"gvisor.googlesource.com/gvisor/runsc/boot"
 	"gvisor.googlesource.com/gvisor/runsc/container"
 	"gvisor.googlesource.com/gvisor/runsc/specutils"
+
+	"github.com/hpcloud/tail"
 
 	"github.com/containernetworking/plugins/pkg/ns"
 
@@ -53,41 +59,48 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/honeytrap/honey-container/server/gvisor/unet"
+	"github.com/honeytrap/honeybox/server/gvisor/unet"
 )
 
 type Manager interface {
-	New() (*gvisorSandbox, error)
+	Create() (*Sandbox, error)
 }
 
 func New(options ...func(Manager) error) (Manager, error) {
-	platformType, _ := boot.MakePlatformType("ptrace")
-	fileAccessType, _ := boot.MakeFileAccessType("proxy")
-	networkType, _ := boot.MakeNetworkType("sandbox")
+	/*
+		l, err := net.Listen("unix", "/tmp/echo.sock")
+		if err != nil {
+			fmt.Println("listen error", err.Error())
+			return nil, err
+		}
 
-	rootDir := "/var/run/runsc"
-	if runtimeDir := os.Getenv("XDG_RUNTIME_DIR"); runtimeDir != "" {
-		rootDir = filepath.Join(runtimeDir, "runsc")
-	}
+		go func() {
+			for {
+				fd, err := l.Accept()
+				if err != nil {
+					fmt.Println("accept error", err.Error())
+					return
+				}
+
+				go func() {
+					for {
+						buf := make([]byte, 512)
+						nr, err := fd.Read(buf)
+						if err != nil {
+							return
+						}
+
+						data := buf[0:nr]
+						fmt.Println(string(data))
+					}
+				}()
+			}
+		}()
+	*/
 
 	d := &gvisorManager{
 		gvisorConfig: gvisorConfig{
 			Bridge: "lxcbr0",
-		},
-		conf: &boot.Config{
-			RootDir:        rootDir,
-			Debug:          false,
-			LogFilename:    "",
-			LogFormat:      "json",
-			DebugLogDir:    "/tmp/echo.sock",
-			FileAccess:     fileAccessType,
-			Overlay:        true,
-			Network:        networkType,
-			LogPackets:     true,
-			Platform:       platformType,
-			Strace:         true,
-			StraceSyscalls: []string{},
-			StraceLogSize:  1024,
 		},
 	}
 
@@ -120,33 +133,60 @@ func (g GoogleEmitter) Emit(level gvisorlog.Level, timestamp time.Time, format s
 
 type gvisorConfig struct {
 	Bridge string `toml:"bridge"`
+	Root   string `toml:"root"`
 }
 
 type gvisorManager struct {
 	gvisorConfig
-
-	conf *boot.Config
-
-	name string
-	ip   string
 }
 
-type gvisorSandbox struct {
-	*container.Container
+type Sandbox struct {
+	c *container.Container
 
-	name string
+	config *boot.Config
+
+	mgr *gvisorManager
+
+	Name string
 	ip   string
+
+	eventCh chan Event
 
 	ns    ns.NetNS
 	close chan struct{}
 }
 
-func (c *gvisorSandbox) Stop() {
+func (c *Sandbox) Stop() {
 	c.close <- struct{}{}
 }
 
+// resolveEnvs transforms lists of environment variables into a single list of
+// environment variables. If a variable is defined multiple times, the last
+// value is used.
+func resolveEnvs(envs ...[]string) ([]string, error) {
+	// First create a map of variable names to values. This removes any
+	// duplicates.
+	envMap := make(map[string]string)
+	for _, env := range envs {
+		for _, str := range env {
+			parts := strings.SplitN(str, "=", 2)
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("invalid variable: %s", str)
+			}
+			envMap[parts[0]] = parts[1]
+		}
+	}
+	// Reassemble envMap into a list of environment variables of the form
+	// NAME=VALUE.
+	env := make([]string, 0, len(envMap))
+	for k, v := range envMap {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+	return env, nil
+}
+
 // NewSandbox returns a new LxcSandbox from the provider.
-func (d *gvisorManager) newSandbox(name string) (*gvisorSandbox, error) {
+func (d *gvisorManager) newSandbox(name string) (*Sandbox, error) {
 	cfg := networkConfig{
 		Name:            name,
 		Interface:       "eth0",
@@ -165,10 +205,7 @@ func (d *gvisorManager) newSandbox(name string) (*gvisorSandbox, error) {
 	// prepare container
 	bundleDir := getwdOrDie()
 
-	spec, err := specutils.ReadSpec(bundleDir)
-	if err != nil {
-		return nil, fmt.Errorf("error reading spec: %v", err)
-	}
+	spec := DefaultSpec()
 
 	for i := range spec.Linux.Namespaces {
 		if spec.Linux.Namespaces[i].Type != specs.NetworkNamespace {
@@ -177,6 +214,8 @@ func (d *gvisorManager) newSandbox(name string) (*gvisorSandbox, error) {
 
 		spec.Linux.Namespaces[i].Path = netNS.Path()
 	}
+
+	spec.Root.Path = d.Root
 
 	containerName := fmt.Sprintf("ht_%s", name)
 
@@ -239,18 +278,45 @@ func (d *gvisorManager) newSandbox(name string) (*gvisorSandbox, error) {
 
 	pidFile := fmt.Sprintf("/var/run/honeytrap/%s.pid", containerName)
 
-	c, err := container.Create(containerName, spec, d.conf, bundleDir, "" /*consoleSocket*/, pidFile)
+	platformType, _ := boot.MakePlatformType("ptrace")
+	fileAccessType, _ := boot.MakeFileAccessType("proxy")
+	networkType, _ := boot.MakeNetworkType("sandbox")
+
+	rootDir := "/var/run/runsc"
+	if runtimeDir := os.Getenv("XDG_RUNTIME_DIR"); runtimeDir != "" {
+		rootDir = filepath.Join(runtimeDir, "runsc")
+	}
+
+	conf := &boot.Config{
+		RootDir:        rootDir,
+		Debug:          false,
+		LogFilename:    "",
+		LogFormat:      "json",
+		DebugLogDir:    "/tmp/" + "ht_" + name,
+		FileAccess:     fileAccessType,
+		Overlay:        true,
+		Network:        networkType,
+		LogPackets:     true,
+		Platform:       platformType,
+		Strace:         true,
+		StraceSyscalls: []string{},
+		StraceLogSize:  1024,
+	}
+
+	c, err := container.Create(containerName, spec, conf, bundleDir, "" /*consoleSocket*/, pidFile)
 	if err != nil {
 		return nil, fmt.Errorf("error running container: %v", err)
 	}
 
-	return &gvisorSandbox{
-		Container: c,
-
-		ns:    netNS,
-		name:  name,
-		ip:    cfg.IP.String(),
-		close: make(chan struct{}),
+	return &Sandbox{
+		c:       c,
+		config:  conf,
+		mgr:     d,
+		ns:      netNS,
+		Name:    name,
+		eventCh: make(chan Event),
+		ip:      cfg.IP.String(),
+		close:   make(chan struct{}),
 	}, nil
 }
 
@@ -420,7 +486,25 @@ func nextSuffix() string {
 	return fmt.Sprintf("%x", int(1e9+r%1e9))
 }
 
-func (d *gvisorManager) New() (*gvisorSandbox, error) {
+type Event struct {
+	Text string `json:"text"`
+}
+
+type Config struct {
+	Root string
+}
+
+func WithRoot(s string) func(Manager) error {
+	return func(c Manager) error {
+		if m, ok := (c.(*gvisorManager)); ok {
+			m.Root = s
+		}
+
+		return nil
+	}
+}
+
+func (d *gvisorManager) Create() (*Sandbox, error) {
 	name := fmt.Sprintf("%s", nextSuffix())
 
 	log.Debugf("Configuring new container %s", name)
@@ -431,53 +515,165 @@ func (d *gvisorManager) New() (*gvisorSandbox, error) {
 		return nil, fmt.Errorf("Error creating container: %s", err)
 	}
 
+	return c, nil
+}
+
+type Control struct {
+	StdIn  *unet.Socket
+	StdOut *unet.Socket
+	StdErr *unet.Socket
+}
+
+func (s *Sandbox) Start() error {
 	log.Debugf("Starting container")
 
-	if err := c.Start(d.conf); err != nil {
+	if err := s.c.Start(s.config); err != nil {
 		log.Errorf("Error starting container: %s", err)
-		return nil, fmt.Errorf("Error starting container: %s", err)
+		return fmt.Errorf("Error starting container: %s", err)
 	}
+
+	filepath.Walk("/tmp/ht_"+s.Name+"/", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
+			return err
+		}
+
+		if filepath.Ext(path) == ".gofer" {
+			fmt.Println("FOUND GOFER", path)
+			go func() {
+				t, err := tail.TailFile(path, tail.Config{Follow: true})
+				if err != nil {
+					return
+
+				}
+
+				for line := range t.Lines {
+					fmt.Println("GOFERO", line.Text)
+				}
+			}()
+		} else if filepath.Ext(path) == ".boot" {
+			// found boot!
+			fmt.Println("FUOND BOOT", path)
+			go func() {
+				t, err := tail.TailFile(path, tail.Config{Follow: true})
+				if err != nil {
+					return
+
+				}
+
+				for line := range t.Lines {
+					if !strings.Contains(line.Text, "exec") {
+						continue
+					}
+
+					fmt.Println("BOOT", line.Text)
+					s.eventCh <- Event{Text: line.Text}
+				}
+			}()
+		}
+
+		return nil
+	})
 
 	go func() {
 		log.Debugf("Waiting for container to finish ")
 
-		c.Wait()
+		s.c.Wait()
 	}()
 
 	go func() {
-		<-c.close
+		<-s.close
 
 		// cleanup container
-		if err := c.Destroy(); err != nil {
+		if err := s.c.Destroy(); err != nil {
 			log.Errorf("Error starting container: %s", err)
 		}
 
 		// cleanup network
-		if err := UnmountNS(c.ns); err != nil {
+		if err := UnmountNS(s.ns); err != nil {
 			log.Errorf("Error unmounting namespace: %s", err)
 		}
 	}()
 
-	return c, nil
+	return nil
 }
 
-func (c *gvisorSandbox) ensureStarted() error {
-	/*
-		if c.isFrozen() {
-			return c.unfreeze()
-		}
+func (c *Sandbox) Events() chan Event {
+	return c.eventCh
+}
 
-		if c.isStopped() {
-			return c.start()
-		}
+func (c *Sandbox) Run() (*Control, error) {
+	stdInReader, stdInWriter, err := unet.SocketPair(false)
+	if err != nil {
+		panic(err)
+	}
 
-		// settle will fill the container with ip address and interface
-		return c.settle()
-	*/
+	stdOutReader, stdOutWriter, err := unet.SocketPair(false)
+	if err != nil {
+		panic(err)
+	}
+
+	stdErrReader, stdErrWriter, err := unet.SocketPair(false)
+	if err != nil {
+		panic(err)
+	}
+
+	ctrl := Control{
+		StdIn:  stdInWriter,
+		StdOut: stdOutReader,
+		StdErr: stdErrReader,
+	}
+
+	e := &control.ExecArgs{
+		Argv:             []string{"/bin/bash"},
+		WorkingDirectory: "",
+		FilePayload:      urpc.FilePayload{Files: []*os.File{os.NewFile(uintptr(stdInReader.FD()), ""), os.NewFile(uintptr(stdOutWriter.FD()), ""), os.NewFile(uintptr(stdErrWriter.FD()), "")}},
+		KUID:             auth.KUID(0),
+		KGID:             auth.KGID(0),
+		ExtraKGIDs:       []auth.KGID{},
+		Capabilities:     &auth.TaskCapabilities{},
+	}
+
+	cont, err := container.Load(c.config.RootDir, "ht_"+c.Name)
+	if err != nil {
+		log.Fatalf("error loading sandox: %v", err)
+	}
+
+	if e.WorkingDirectory == "" {
+		e.WorkingDirectory = cont.Spec.Process.Cwd
+	}
+
+	// Get the executable path, which is a bit tricky because we have to
+	// inspect the environment PATH which is relative to the root path.
+	// If the user is overriding environment variables, PATH may have been
+	// overwritten.
+	rootPath := c.c.Spec.Root.Path
+
+	e.Envv, err = resolveEnvs(c.c.Spec.Process.Env, []string{"TERM=xterm", "LANG=en_US.UTF-8"})
+	if err != nil {
+		log.Fatalf("error getting environment variables: %v", err)
+	}
+
+	e.Filename, err = specutils.GetExecutablePath(e.Argv[0], rootPath, e.Envv)
+	if err != nil {
+		log.Fatalf("error getting executable path: %v", err)
+	}
+
+	go func() {
+		if _, err := cont.Execute(e); err == io.EOF {
+		} else if err != nil {
+			log.Errorf("error getting processes for container: %#+v", err)
+		}
+	}()
+
+	return &ctrl, nil
+}
+
+func (c *Sandbox) ensureStarted() error {
 	return nil
 }
 
 // isRunning returns true/false if the container is in running state.
-func (c *gvisorSandbox) isRunning() bool {
-	return c.Status == container.Running
+func (s *Sandbox) isRunning() bool {
+	return s.c.Status == container.Running
 }

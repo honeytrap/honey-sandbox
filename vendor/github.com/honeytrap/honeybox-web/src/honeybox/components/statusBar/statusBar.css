@@ -1,0 +1,39 @@
+.statusBar {
+  line-height: 40px;
+  margin: 0 15px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.connection {
+  display: flex;
+  align-items: center;
+}
+
+.message {
+  display: inline-block;
+  margin: 0;
+}
+
+.dot {
+  border-radius: 50%;
+  width: 6px;
+  height: 6px;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.connected {
+  background: #00bf8f;
+}
+
+.notConnected {
+  background: #aa1b21;
+}
+
+.name {
+  margin: 0;
+  font-size: 1em;
+  line-height: 40px;
+  font-weight: bold;
+}
