@@ -1,9 +1,9 @@
-# Honeybox
+# HoneySandbox
 
-Honeybox uses gVisor to introspect applications running within the sandbox. It will give you a (webbased) shell to the container, where syscalls and network activity will be tracked within the same page.
+HoneySandbox uses gVisor to introspect applications running within the sandbox. It will give you a (webbased) shell to the container, where syscalls and network activity will be tracked within the same page.
 
 ### WORK IN PROGRESS
 
-Honeybox is very much a work in progress.
+HoneySandbox is very much a work in progress.
 
 # Usage
